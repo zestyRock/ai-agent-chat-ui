@@ -4,7 +4,11 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "encrypt-key": "node keyManager.js encrypt",
+    "decrypt-key": "node keyManager.js decrypt",
+    "list-keys": "node keyManager.js list",
+    "generate-password": "node keyManager.js generate-password"
   },
   "dependencies": {
     "express": "^4.18.0",

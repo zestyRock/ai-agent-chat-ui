@@ -1,14 +1,15 @@
 import express from 'express'
 import cors from 'cors'
 import axios from 'axios'
+import config, { loadApiKey } from './config.js'
 
 const app = express()
-const PORT = process.env.PORT || 3001
+const PORT = config.port
 
 app.use(cors())
 app.use(express.json())
 
-const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/intent'
+const N8N_WEBHOOK_URL = config.n8nWebhookUrl
 
 app.post('/api/chat', async (req, res) => {
   try {
@@ -97,11 +98,72 @@ app.post('/api/chat', async (req, res) => {
 })
 
 app.get('/api/health', (req, res) => {
+  const encryptedKeys = config.listEncryptedKeys()
+  const hasEncryptedKeys = config.hasEncryptedKeys()
+  
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    n8nWebhookUrl: N8N_WEBHOOK_URL
+    n8nWebhookUrl: N8N_WEBHOOK_URL,
+    encryption: {
+      enabled: hasEncryptedKeys,
+      keysAvailable: encryptedKeys,
+      masterPasswordProvided: !!config.masterPassword
+    }
   })
+})
+
+// Endpoint to get encrypted key status
+app.get('/api/keys/status', (req, res) => {
+  try {
+    const encryptedKeys = config.listEncryptedKeys()
+    const hasEncryptedKeys = config.hasEncryptedKeys()
+    
+    res.json({
+      success: true,
+      encryption: {
+        enabled: hasEncryptedKeys,
+        keysAvailable: encryptedKeys,
+        masterPasswordProvided: !!config.masterPassword
+      }
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to check key status',
+      message: error.message
+    })
+  }
+})
+
+// Endpoint to test key decryption (for development/testing)
+app.post('/api/keys/test', (req, res) => {
+  const { keyName } = req.body
+  
+  if (!keyName) {
+    return res.status(400).json({
+      success: false,
+      error: 'Key name is required'
+    })
+  }
+  
+  try {
+    // Try to decrypt the key (this will throw if password is wrong or key doesn't exist)
+    const decryptedKey = loadApiKey(keyName, config.masterPassword)
+    
+    res.json({
+      success: true,
+      message: `Key '${keyName}' can be decrypted successfully`,
+      keyExists: !!decryptedKey,
+      keyLength: decryptedKey ? decryptedKey.length : 0
+    })
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      error: 'Key decryption failed',
+      message: error.message
+    })
+  }
 })
 
 app.listen(PORT, () => {
