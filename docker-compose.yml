@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  # Frontend
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:3001
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+  # Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - N8N_WEBHOOK_URL=http://host.docker.internal:5678/webhook-test/intent
+      - PORT=3001
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  default:
+    driver: bridge
